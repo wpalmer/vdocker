@@ -161,4 +161,9 @@ else
   args=( "${args[@]}" "$@" )
 fi
 
+if [[ -n "$VDOCKER_VERBOSE" ]]; then
+	printf '+ ' >&2
+	printf '%q ' docker "${args[@]}" >&2;
+	echo >&2
+fi
 docker "${args[@]}"
