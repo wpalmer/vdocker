@@ -158,7 +158,7 @@ if [[ "$first" = "run" ]]; then
     esac
   done
 else
-  args=( "$@" )
+  args=( "${args[@]}" "$@" )
 fi
 
 docker "${args[@]}"
