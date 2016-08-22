@@ -49,13 +49,28 @@ map_volume(){
     path_tail="${path#$mount_destination}"
   fi
 
-  local mount_source="$(
-    jq -r --arg path "$mount_destination" <<<"$volumes" '
-      [.[]|select( $path == .Destination )]|first|.Source
-    '
-  )"
-
-  printf '%s%s\n' "$mount_source" "$path_tail"
+  jq -r \
+    --arg path "$mount_destination" \
+    --arg path_tail "$path_tail" \
+    <<<"$volumes" '
+    [
+      .[] | select(
+        $path == .Destination or
+        .Destination[0:(($path + $path_tail)|length + 1)] ==
+        ($path + $path_tail + "/")
+      ) | (
+        .Source + $path_tail + ":" +
+        (
+          if .Destination[(($path + $path_tail)|length + 1):] | length == 0
+          then
+            "."
+          else
+            .Destination[(($path + $path_tail)|length + 1):]
+          end
+        )
+      )
+    ]|join(":")
+  '
 }
 
 has_value_args=(
@@ -95,7 +110,37 @@ if [[ "$first" = "run" ]]; then
           exit 1
         fi
 
-        args=( "${args[@]}" --volume="$mapped:$spec_tail" )
+        mapped_component=
+        mapped_source=
+        mapped_dest=
+        spec_tail_path="${spec_tail%%:*}"
+        spec_tail_mode="${spec_tail#*:}"
+        if [[ "$spec_tail_mode" = "$spec_tail" ]]; then
+          spec_tail_mode=
+        else
+          spec_tail_mode=":$spec_tail_mode"
+        fi
+
+        while read -d : mapped_component; do
+          if [[ -z "$mapped_source" ]]; then
+            mapped_source="$mapped_component"
+            continue
+          fi
+          mapped_dest="$mapped_component"
+
+          if [[ "$mapped_dest" = "." ]]; then
+            mapped_dest=
+          else
+            mapped_dest="/$mapped_dest"
+          fi
+
+          args=(
+            "${args[@]}"
+            --volume="$mapped_source:${spec_tail_path}$mapped_dest${spec_tail_mode}"
+          )
+          mapped_source=
+          mapped_dest=
+        done <<<"${mapped}:"
         ;;
       -*)
         args=( "${args[@]}" "$arg" )
