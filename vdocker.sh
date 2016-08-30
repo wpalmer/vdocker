@@ -1,6 +1,6 @@
 #!/bin/bash
 cgroup="$(sed -n '1{ s/^[0-9]*:[^:]*://; p; q; }' /proc/1/cgroup)"
-if [[ "${cgroup#/docker/}" = "$cgroup" ]]; then docker "$@"; exit "$?"; fi
+if [[ "${cgroup#/docker/}" = "$cgroup" ]]; then exec docker "$@"; fi
 
 map_volume(){
   local path="$(
@@ -166,4 +166,4 @@ if [[ -n "$VDOCKER_VERBOSE" ]]; then
 	printf '%q ' docker "${args[@]}" >&2;
 	echo >&2
 fi
-docker "${args[@]}"
+exec docker "${args[@]}"
