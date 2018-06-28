@@ -1,6 +1,6 @@
 #!/bin/bash
-cgroup="$(sed -n '1{ s/^[0-9]*:[^:]*://; p; q; }' /proc/1/cgroup)"
-if [[ "${cgroup#/docker/}" = "$cgroup" ]]; then exec docker "$@"; fi
+container="$(sed -n '/^[0-9]*:[^:]*:\/docker\//{ s/^[^:]*:[^:]*:\/docker\///; p; q; }' /proc/1/cgroup)"
+if [[ -z "${container}" ]]; then exec docker "$@"; fi
 
 map_volume(){
   local path="$(
@@ -22,7 +22,7 @@ map_volume(){
   local volumes="$(
     docker inspect \
       --format='{{ json .Mounts }}' \
-      "${cgroup#/docker/}"
+      "${container}"
   )"
 
   local mount_destination="$(
